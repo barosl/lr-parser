@@ -17,6 +17,6 @@ BE => BT
 BE => BE || BT
 BT => BF
 BT => BT && BF
-BF => [ BE ]
+BF => ( BE )
 BF => ! BF
 BF => AE relop AE
