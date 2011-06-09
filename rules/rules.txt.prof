@@ -1,0 +1,22 @@
+L =>
+L => L S
+S => if ( BE ) S
+S => while ( BE ) S
+S => id = AE ;
+S => { L }
+AE => AT
+AE => AE + AT
+AE => AE - AT
+AT => AF
+AT => AT * AF
+AT => AT / AF
+AF => ( AE )
+AF => id
+AF => num
+BE => BT
+BE => BE || BT
+BT => BF
+BT => BT && BF
+BF => [ BE ]
+BF => ! BF
+BF => AE relop AE

@@ -1,0 +1,5 @@
+P => b D ; S e
+D => d ; D
+D => d
+S => s ; S
+S => s
