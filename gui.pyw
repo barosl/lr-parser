@@ -56,8 +56,7 @@ def draw_tree(tree):
 
 	max_y = y
 
-	min_x = 0
-	max_x = 0
+	min_x = max_x = 0
 	if boxes:
 		min_x = max_x = boxes[0]['x']
 
@@ -112,7 +111,7 @@ class MainWnd(QWidget):
 	def __init__(self):
 		super(MainWnd, self).__init__()
 
-		self.setWindowTitle(u'LR 파서')
+		self.setWindowTitle(u'LR 구문 분석자')
 
 		lt = QVBoxLayout(self)
 
@@ -145,7 +144,7 @@ class MainWnd(QWidget):
 
 	def on_open(self):
 		if not self.parser:
-			QMessageBox.critical(self, None, u'파서가 초기화되지 않았습니다.')
+			QMessageBox.critical(self, None, u'구문 분석자가 초기화되지 않았습니다.')
 			return
 
 		fpath = QFileDialog.getOpenFileName(self, None, 'input', u'C 파일 (*.c);;텍스트 파일 (*.txt);;모든 파일 (*)')[0]
@@ -159,10 +158,6 @@ class MainWnd(QWidget):
 		self.area.ensureVisible(w/2, 0, self.area.width()/2)
 
 		self.canvas.update()
-
-#		self.area.resize(600, 600)
-#		charm = FlickCharm()
-#		charm.activateOn(self.area)
 
 def main():
 	app = QApplication(sys.argv)

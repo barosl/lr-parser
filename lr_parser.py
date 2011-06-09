@@ -45,7 +45,7 @@ class State:
 
 class Parser:
 	rules = None
-	st_sym = 'START'
+	st_sym = ' '
 	firsts_cache = {}
 	states = {}
 	lr_table = {}
