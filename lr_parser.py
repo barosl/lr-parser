@@ -234,6 +234,9 @@ class Parser:
 		self.create_table()
 
 	def parse_syms(self, syms):
+		if not self.rules:
+			raise ParserError, 'rules not loaded'
+
 		que = ['$']+list(reversed(syms))
 		stack = [self.states[0]]
 		tree_stack = []
