@@ -56,11 +56,12 @@ class State:
 		return '(#%d: %s)' % (self.no, repr(self.items))
 
 class Parser:
-	rules = None
 	st_sym = ' '
+
+	rules = None
 	firsts_cache = {}
-	states = {}
 	lr_table = {}
+	state_0 = None
 
 	def get_firsts(self, syms):
 		res = self.firsts_cache.get(tuple(syms), [])
@@ -197,6 +198,8 @@ class Parser:
 
 		self.rules = rules
 		self.firsts_cache = {}
+		self.lr_table = {}
+		self.state_0 = None
 
 	def get_cano_coll(self):
 		states = []
@@ -232,10 +235,10 @@ class Parser:
 
 	def create_table(self):
 		follows = self.calc_follows()
-		self.states = self.get_cano_coll()
-		lr_table = dict((x, {}) for x in self.states)
+		states = self.get_cano_coll()
+		lr_table = dict((x, {}) for x in states)
 
-		for state in self.states:
+		for state in states:
 			for item in state.items:
 				for sym in item.syms:
 					if sym in self.rules: continue
@@ -273,6 +276,7 @@ class Parser:
 							lr_table[state][sym] = ['s', state.childs[sym]]
 
 		self.lr_table = lr_table
+		self.state_0 = states[0]
 
 	def load_rules(self, fpath):
 		self.read_rules(fpath)
@@ -283,7 +287,7 @@ class Parser:
 			raise ParserError, 'rules not loaded'
 
 		que = [{'type': '$'}]+list(reversed(toks))
-		stack = [self.states[0]]
+		stack = [self.state_0]
 		tree_stack = []
 		tree = None
 
@@ -353,7 +357,7 @@ class Parser:
 
 def main():
 	parser = Parser()
-	parser.load_rules('rules/rules.txt')
+	parser.load_rules('rules/rules.txt.prof')
 	tree = parser.parse_toks([{'type': x} for x in ['id', '=', 'num', ';', 'id', '=', 'num', ';']])
 	print tree
 	tree = parser.parse_text('a=123; b=456;')
