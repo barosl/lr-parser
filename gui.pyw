@@ -37,9 +37,14 @@ def draw_tree(tree):
 		x = -((NODE_W+NODE_SPACING)*len(nodes) - NODE_SPACING)/2
 
 		for node in nodes:
-			box = {'name': node['name'], 'x': x, 'y': y, 'w': NODE_W, 'h': NODE_H}
+			is_term = 'type' in node
+			name = node['buf'] if is_term else node['name']
+			color = (255, 0, 0) if is_term else (0, 0, 255)
+
+			box = {'name': name, 'x': x, 'y': y, 'w': NODE_W, 'h': NODE_H, 'color': color}
 			node['box'] = box
 			boxes.append(box)
+
 			x += NODE_W+NODE_SPACING
 
 		y += NODE_H+NODE_SPACING
@@ -96,7 +101,7 @@ class Canvas(QWidget):
 		for box in self.boxes:
 			pa.setPen(QColor(0, 0, 0))
 			pa.drawRect(box['x'], box['y'], box['w'], box['h'])
-			pa.setPen(QColor(0, 0, 255))
+			pa.setPen(QColor(*box['color']))
 			pa.drawText(box['x'], box['y'], box['w'], box['h'], Qt.AlignCenter, box['name'])
 
 		for line in self.lines:

@@ -54,13 +54,13 @@ class Lexer:
 			ch = self.getc()
 			ch_ord = ord(ch) if ch else 0
 			buf.append(ch)
-			buf_str = ''.join(buf)
+			tok['buf'] = ''.join(buf)
 
 			if state == 0: # Neutral state
 				buf = [ch]
 
 				if ch == ' ' or ch == '\t' or ch == '\n' or ch == '\r':
-					pass # Nothing done here
+					buf[:] = [] # FIXME: reset buffer
 
 				elif (ch_ord >= ord('a') and ch_ord <= ord('z')) or (ch_ord >= ord('A') and ch_ord <= ord('Z')) or ch == '_':
 					state = 1
@@ -175,20 +175,20 @@ class Lexer:
 					pass
 				else:
 					self.ungetc(buf.pop())
-					buf_str = ''.join(buf)
+					tok['buf'] = ''.join(buf)
 
-					try: idx = self.get_kw_idx(buf_str)
+					try: idx = self.get_kw_idx(tok['buf'])
 					except ValueError:
-						idx = self.get_sym_idx(buf_str)
+						idx = self.get_sym_idx(tok['buf'])
 
 						tok['type'] = 'id'
 						tok['num'] = idx
-						tok['str'] = buf_str
+						tok['str'] = tok['buf']
 						return tok
 					else:
-						tok['type'] = 'kw'
+						tok['type'] = tok['buf'] # FIXME: 'kw'
 						tok['num'] = idx
-						tok['str'] = buf_str
+						tok['str'] = tok['buf']
 						return tok
 
 			elif state == 2: # Starts with '/'
@@ -206,6 +206,7 @@ class Lexer:
 					return tok
 				else:
 					self.ungetc(buf.pop())
+					tok['buf'] = ''.join(buf) # FIXME: redundant
 
 					tok['type'] = '/'
 					return tok
@@ -234,12 +235,13 @@ class Lexer:
 					state = 0
 				else:
 					self.ungetc(buf.pop())
+					tok['buf'] = ''.join(buf) # FIXME: redundant
 
 					state = 4
 
 			elif state == 6: # String tok
 				if ch == '"':
-					buf_str = buf_str[1:-1]
+					tok['str'] = tok['buf'][1:-1]
 					tok['type'] = 'str'
 					return tok
 
@@ -252,6 +254,7 @@ class Lexer:
 					state = 9
 				else:
 					self.ungetc(buf.pop())
+					tok['buf'] = ''.join(buf) # FIXME: redundant
 
 					state = 11
 
@@ -263,6 +266,7 @@ class Lexer:
 					state = 9
 				else:
 					self.ungetc(buf.pop())
+					tok['buf'] = ''.join(buf) # FIXME: redundant
 
 					state = 11
 
@@ -273,10 +277,12 @@ class Lexer:
 					state = 10
 				elif ch_ord >= ord('0') and ch_ord <= ('9'):
 					self.ungetc(buf.pop())
+					tok['buf'] = ''.join(buf) # FIXME: redundant
 
 					state = 10
 				else:
 					self.ungetc(buf.pop())
+					tok['buf'] = ''.join(buf) # FIXME: redundant
 
 					state = 11
 
@@ -285,11 +291,13 @@ class Lexer:
 					num_exp = num_exp*10 + int(ch)
 				else:
 					self.ungetc(buf.pop())
+					tok['buf'] = ''.join(buf) # FIXME: redundant
 
 					state = 11
 
 			elif state == 11: # Numeric token: Synthesize the parts
 				self.ungetc(buf.pop())
+				tok['buf'] = ''.join(buf) # FIXME: redundant
 
 				tok['type'] = 'num'
 				if num_frac or num_exp:
@@ -307,6 +315,7 @@ class Lexer:
 					return tok
 				else:
 					self.ungetc(buf.pop())
+					tok['buf'] = ''.join(buf) # FIXME: redundant
 
 					tok['type'] = '='
 					return tok
@@ -330,7 +339,7 @@ class Lexer:
 			elif state == 15: # Ends with '\''
 				if ch != '\'': return 2
 				tok['type'] = 'ch'
-				tok['num'] = buf_str
+				tok['num'] = tok['buf'][-1]
 				return tok
 
 			elif state == 16: # Starts with '+'
@@ -342,6 +351,7 @@ class Lexer:
 					return tok
 				else:
 					self.ungetc(buf.pop())
+					tok['buf'] = ''.join(buf) # FIXME: redundant
 
 					tok['type'] = '+'
 					return tok
@@ -353,8 +363,9 @@ class Lexer:
 					return tok
 				else:
 					self.ungetc(buf.pop())
+					tok['buf'] = ''.join(buf) # FIXME: redundant
 
-					tok['type'] = 'lop'
+					tok['type'] = '!' # FIXME: 'lop'
 					tok['str'] = '!'
 					return tok
 
@@ -370,13 +381,14 @@ class Lexer:
 					return tok
 				else:
 					self.ungetc(buf.pop())
+					tok['buf'] = ''.join(buf) # FIXME: redundant
 
 					tok['type'] = '-'
 					return tok
 
 			elif state == 19: # Starts with '&'
 				if ch == '&':
-					tok['type'] = 'lop'
+					tok['type'] = '&&' # FIXME: 'lop'
 					tok['str'] = '&&'
 					return tok
 				elif ch == '=':
@@ -384,13 +396,14 @@ class Lexer:
 					return tok
 				else:
 					self.ungetc(buf.pop())
+					tok['buf'] = ''.join(buf) # FIXME: redundant
 
 					tok['type'] = '&'
 					return tok
 
 			elif state == 20: # Starts with '|'
 				if ch == '|':
-					tok['type'] = 'lop'
+					tok['type'] = '||' # FIXME: 'lop'
 					tok['str'] = '||'
 					return tok
 				elif ch == '=':
@@ -398,6 +411,7 @@ class Lexer:
 					return tok
 				else:
 					self.ungetc(buf.pop())
+					tok['buf'] = ''.join(buf) # FIXME: redundant
 
 					tok['type'] = '|'
 					return tok
@@ -411,6 +425,7 @@ class Lexer:
 					state = 26
 				else:
 					self.ungetc(buf.pop())
+					tok['buf'] = ''.join(buf) # FIXME: redundant
 
 					tok['type'] = 'rop'
 					tok['str'] = '<'
@@ -425,6 +440,7 @@ class Lexer:
 					state = 27
 				else:
 					self.ungetc(buf.pop())
+					tok['buf'] = ''.join(buf) # FIXME: redundant
 
 					tok['type'] = 'rop'
 					tok['str'] = '>'
@@ -436,6 +452,7 @@ class Lexer:
 					return tok
 				else:
 					self.ungetc(buf.pop())
+					tok['buf'] = ''.join(buf) # FIXME: redundant
 
 					tok['type'] = '%'
 					return tok
@@ -446,6 +463,7 @@ class Lexer:
 					return tok
 				else:
 					self.ungetc(buf.pop())
+					tok['buf'] = ''.join(buf) # FIXME: redundant
 
 					tok['type'] = '^'
 					return tok
@@ -456,6 +474,7 @@ class Lexer:
 					return tok
 				else:
 					self.ungetc(buf.pop())
+					tok['buf'] = ''.join(buf) # FIXME: redundant
 
 					tok['type'] = '*'
 					return tok
@@ -466,6 +485,7 @@ class Lexer:
 					return tok
 				else:
 					self.ungetc(buf.pop())
+					tok['buf'] = ''.join(buf) # FIXME: redundant
 
 					tok['type'] = '<<'
 					return tok
@@ -476,6 +496,7 @@ class Lexer:
 					return tok
 				else:
 					self.ungetc(buf.pop())
+					tok['buf'] = ''.join(buf) # FIXME: redundant
 
 					tok['type'] = '>>'
 					return tok

@@ -19,4 +19,4 @@ BT => BF
 BT => BT && BF
 BF => [ BE ]
 BF => ! BF
-BF => AE relop AE
+BF => AE rop AE

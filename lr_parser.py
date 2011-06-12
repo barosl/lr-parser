@@ -278,27 +278,27 @@ class Parser:
 		self.read_rules(fpath)
 		self.create_table()
 
-	def parse_syms(self, syms):
+	def parse_toks(self, toks):
 		if not self.rules:
 			raise ParserError, 'rules not loaded'
 
-		que = ['$']+list(reversed(syms))
+		que = [{'type': '$'}]+list(reversed(toks))
 		stack = [self.states[0]]
 		tree_stack = []
 		tree = None
 
 		while True:
 			if not que: raise ParserError, 'input queue empty'
-			sym = que[-1]
+			tok = que[-1]
 			if not stack: raise ParserError, 'stack underflow'
 			state = stack[-1]
 
-			try: info = self.lr_table[state][sym]
-			except KeyError: raise ParserError, 'input not acceptable: %s' % sym
+			try: info = self.lr_table[state][tok['type']]
+			except KeyError: raise ParserError, 'input not acceptable: %s' % tok['type']
 
 			if info[0] == 's':
-				stack.append(sym)
-				tree_stack.append({'name': sym, 'childs': []})
+				stack.append(tok)
+				tree_stack.append(dict(tok, childs=[]))
 				stack.append(info[1])
 				que.pop()
 
@@ -331,20 +331,15 @@ class Parser:
 		return tree
 
 	def parse_with_lexer(self, lexer):
-		syms = []
+		toks = []
 
 		while True:
 			tok = lexer.get_next_tok()
 			if tok['type'] == 'eof': break
 
-			if tok['type'] == 'kw': sym = tok['str']
-			elif tok['type'] == 'rop': sym = 'relop'
-			elif tok['type'] == 'lop': sym = tok['str']
-			else: sym = tok['type']
+			toks.append(tok)
 
-			syms.append(sym)
-
-		return self.parse_syms(syms)
+		return self.parse_toks(toks)
 
 	def parse_text(self, text):
 		lexer = Lexer()
@@ -359,7 +354,7 @@ class Parser:
 def main():
 	parser = Parser()
 	parser.load_rules('rules/rules.txt')
-	tree = parser.parse_syms(['id', '=', 'num', ';', 'id', '=', 'num', ';'])
+	tree = parser.parse_toks([{'type': x} for x in ['id', '=', 'num', ';', 'id', '=', 'num', ';']])
 	print tree
 	tree = parser.parse_text('a=123; b=456;')
 	print tree
