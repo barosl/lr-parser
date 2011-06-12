@@ -8,9 +8,21 @@ class ParserError:
 	def __init__(self, msg): self.msg = msg
 	def __str__(self): return self.msg
 
+class Rule:
+	def __init__(self, syms, sem_rules=None):
+		self.syms = syms
+		self.set_sem_rules(sem_rules)
+
+	def set_sem_rules(self, sem_rules):
+		self.sem_rules = compile(sem_rules, '<string>', 'exec') if sem_rules else None
+
+	def __iter__(self): return iter(self.syms)
+	def __len__(self): return len(self.syms)
+	def __getitem__(self, key): return self.syms[key]
+
 class Item:
 	def __init__(self, st, syms, idx):
-		if syms == ['']: syms = []
+		if syms and syms[0] == '': syms.syms = []
 
 		self.st = st
 		self.syms = syms
@@ -135,8 +147,32 @@ class Parser:
 		rules = {}
 		not_yet = True
 
+		pythonic = False
+		sem_rules = ''
+		is_first = True
+		cur_syms = None
+
 		for line in open(fpath):
+			if is_first:
+				is_first = False
+				if line.startswith('#'):
+					pythonic = True
+					continue
+
+			if line.startswith('#'):
+				if not pythonic: continue
+				else:
+					if cur_syms:
+						cur_syms.set_sem_rules(sem_rules)
+						cur_syms = None
+					sem_rules = ''
+				line = line[1:]
+			elif pythonic:
+				sem_rules += line
+				continue
+
 			words = re.findall('\\S+', line)
+			if not words: continue
 			if len(words) <= 1 or words[1] != '=>':
 				raise ParserError, '\'=>\' not exists in rule'
 			label, syms = words[0], words[2:]
@@ -148,7 +184,16 @@ class Parser:
 				rules[self.st_sym] = [[label]]
 
 			if label not in rules: rules[label] = []
-			rules[label].append(syms)
+
+			cur_syms = Rule(syms)
+			rules[label].append(cur_syms)
+
+		if not_yet:
+			raise ParserError, 'empty grammar'
+
+		if pythonic and cur_syms:
+			cur_syms.set_sem_rules(sem_rules)
+			cur_syms = None
 
 		self.rules = rules
 		self.firsts_cache = {}
@@ -269,7 +314,7 @@ class Parser:
 					tree_stack[-cnt/2:] = []
 
 				stack.append(info[1].st)
-				tree_stack.append({'name': info[1].st, 'childs': childs})
+				tree_stack.append({'name': info[1].st, 'childs': childs, 'sem_rules': info[1].syms.sem_rules})
 				info2 = self.lr_table[stack[-2]][stack[-1]]
 				if info2[0] != 'g': raise ParserError, 'invalid LR table entry detected'
 				stack.append(info2[1])
