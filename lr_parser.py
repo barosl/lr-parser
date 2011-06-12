@@ -138,7 +138,7 @@ class Parser:
 		for line in open(fpath):
 			words = re.findall('\\S+', line)
 			if len(words) <= 1 or words[1] != '=>':
-				raise ParserError, '=> not exists in rule'
+				raise ParserError, '\'=>\' not exists in rule'
 			label, syms = words[0], words[2:]
 
 			if not syms: syms.append('')
@@ -268,7 +268,7 @@ class Parser:
 				stack.append(info[1].st)
 				tree_stack.append({'name': info[1].st, 'childs': childs})
 				info2 = self.lr_table[stack[-2]][stack[-1]]
-				if info2[0] != 'g': raise ParserError, 'invalid LR table detected'
+				if info2[0] != 'g': raise ParserError, 'invalid LR table entry detected'
 				stack.append(info2[1])
 
 			elif info[0] == 'a':
@@ -278,7 +278,7 @@ class Parser:
 				break
 
 			else:
-				raise ParserError, 'invalid LR table detected'
+				raise ParserError, 'invalid LR table entry detected'
 
 		return tree
 
