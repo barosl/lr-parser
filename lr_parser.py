@@ -240,9 +240,6 @@ class Parser:
 
 		for state in states:
 			for item in state.items:
-				for sym in item.syms:
-					if sym in self.rules: continue
-
 				if item.ended():
 					if item.st == self.st_sym:
 						sym = '$'
@@ -260,20 +257,16 @@ class Parser:
 
 				else:
 					sym = item.get_cur_sym()
-					if sym in self.rules:
-						if sym in self.rules and sym in state.childs:
-							new_val = ['g', state.childs[sym]]
+					if sym in state.childs:
+						if sym in self.rules: new_val = ['g', state.childs[sym]]
+						else: new_val = ['s', state.childs[sym]]
 
-							if lr_table[state].get(sym, new_val) != new_val:
-								raise ParserError, 'duplicate entry in LR table'
+						# Some redundant checks were done here; if the same state and sym are given,
+						# state.childs[sym] must always be the same.
+						if lr_table[state].get(sym, new_val)[0] != new_val[0]:
+							raise ParserError, 'duplicate entry in LR table'
 
-							lr_table[state][sym] = new_val
-					else:
-						if sym in state.childs:
-							if sym in lr_table[state]:
-								raise ParserError, 'duplicate entry in LR table'
-
-							lr_table[state][sym] = ['s', state.childs[sym]]
+						lr_table[state][sym] = new_val
 
 		self.lr_table = lr_table
 		self.state_0 = states[0]
