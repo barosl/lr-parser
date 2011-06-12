@@ -1,0 +1,51 @@
+# vim: set ft=python:
+
+# S => S S1
+node['code'] = childs[0]['code'] + childs[1]['code']
+
+# S => S1
+node['code'] = childs[0]['code']
+
+# S1 => id = E ;
+place = id_place(childs[0]['str'])
+node['code'] = childs[2]['code'] + [['copy', place, childs[2]['place']]]
+
+# S1 => if ( E ) S1 else S1
+label_true = new_label()
+label_false = new_label()
+label_next = new_label()
+node['code'] = childs[2]['code'] + [['load', childs[2]['place']], ['goto_if', label_true]] + [['goto', label_false]] \
+	+ [['label', label_true]] + childs[4]['code'] + [['goto', label_next]] \
+	+ [['label', label_false]] + childs[6]['code'] \
+	+ [['label', label_next]]
+
+# S1 => while ( E ) S1
+label_begin = new_label()
+label_true = new_label()
+label_false = new_label()
+node['code'] = [['label', label_begin]] + childs[2]['code'] + [['load', childs[2]['place']], ['goto_if', label_true]] + [['goto', label_false]] \
+	+ [['label', label_true]] + childs[4]['code'] + [['goto', label_begin]] \
+	+ [['label', label_false]]
+
+# S1 => { S }
+node['code'] = childs[1]['code']
+
+# E => E + E1
+node['place'] = tmp_place()
+node['code'] = childs[0]['code'] + childs[2]['code'] + [['load', childs[0]['place']], ['addt', childs[2]['place']], ['store', node['place']]]
+
+# E => E - E1
+node['place'] = tmp_place()
+node['code'] = childs[0]['code'] + childs[2]['code'] + [['load', childs[0]['place']], ['subt', childs[2]['place']], ['store', node['place']]]
+
+# E => E1
+node['place'] = childs[0]['place']
+node['code'] = childs[0]['code']
+
+# E1 => id
+node['place'] = id_place(childs[0]['str'])
+node['code'] = []
+
+# E1 => num
+node['place'] = tmp_place()
+node['code'] = [['assign', node['place'], childs[0]['str']]]

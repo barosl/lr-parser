@@ -1,0 +1,7 @@
+sum = 0;
+cnt = input;
+while (cnt) {
+	sum = sum + cnt;
+	cnt = cnt - 1;
+}
+output = sum;
