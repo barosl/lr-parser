@@ -1,11 +1,13 @@
 /* vim: set ft=c: */
 
-sum = 0;
+a = 0;
+b = 1;
 cnt = input;
 
 while (cnt) {
-	sum = sum + cnt;
+	output = a;
+	c = a+b;
+	a = b;
+	b = c;
 	cnt = cnt - 1;
 }
-
-output = sum;

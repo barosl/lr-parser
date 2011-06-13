@@ -32,20 +32,36 @@ node['code'] = childs[1]['code']
 
 # E => E + E1
 node['place'] = tmp_place()
-node['code'] = childs[0]['code'] + childs[2]['code'] + [['load', childs[0]['place']], ['addt', childs[2]['place']], ['store', node['place']]]
+node['code'] = childs[0]['code'] + childs[2]['code'] + [['load', childs[0]['place']], ['add', childs[2]['place']], ['store', node['place']]]
 
 # E => E - E1
 node['place'] = tmp_place()
-node['code'] = childs[0]['code'] + childs[2]['code'] + [['load', childs[0]['place']], ['subt', childs[2]['place']], ['store', node['place']]]
+node['code'] = childs[0]['code'] + childs[2]['code'] + [['load', childs[0]['place']], ['sub', childs[2]['place']], ['store', node['place']]]
 
 # E => E1
 node['place'] = childs[0]['place']
 node['code'] = childs[0]['code']
 
-# E1 => id
+# E1 => E1 * E2
+node['place'] = tmp_place()
+node['code'] = childs[0]['code'] + childs[2]['code'] + [['load', childs[0]['place']], ['mul', childs[2]['place']], ['store', node['place']]]
+
+# E1 => E1 / E2
+node['place'] = tmp_place()
+node['code'] = childs[0]['code'] + childs[2]['code'] + [['load', childs[0]['place']], ['div', childs[2]['place']], ['store', node['place']]]
+
+# E1 => E1 % E2
+node['place'] = tmp_place()
+node['code'] = childs[0]['code'] + childs[2]['code'] + [['load', childs[0]['place']], ['mod', childs[2]['place']], ['store', node['place']]]
+
+# E1 => E2
+node['place'] = childs[0]['place']
+node['code'] = childs[0]['code']
+
+# E2 => id
 node['place'] = id_place(childs[0]['str'])
 node['code'] = []
 
-# E1 => num
+# E2 => num
 node['place'] = tmp_place()
 node['code'] = [['assign', node['place'], childs[0]['str']]]

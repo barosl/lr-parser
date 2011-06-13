@@ -137,11 +137,11 @@ class LmcCodeGen(NativeCodeGen):
 				res.append('%02d STA %02d;' % (addr, self.MEM_OFFSET - args[0]))
 				addr += 1
 
-			elif cmd == 'addt':
+			elif cmd == 'add':
 				res.append('%02d ADD %02d;' % (addr, self.MEM_OFFSET - args[0]))
 				addr += 1
 
-			elif cmd == 'subt':
+			elif cmd == 'sub':
 				res.append('%02d SUB %02d;' % (addr, self.MEM_OFFSET - args[0]))
 				addr += 1
 
@@ -167,6 +167,9 @@ class LmcCodeGen(NativeCodeGen):
 			elif cmd == 'output':
 				res.append('%02d OUT;' % addr)
 				addr += 1
+
+			else:
+				raise CodeGenError, 'unknown instruction: %s' % cmd
 
 		for idx in jmps:
 			code = res[idx]
@@ -218,13 +221,27 @@ class NasmCodeGen(NativeCodeGen):
 			elif cmd == 'store':
 				res.append('\tmov dword [var_%d], eax' % args[0])
 
-			elif cmd == 'addt':
+			elif cmd == 'add':
 				res.append('\tmov edx, [var_%d]' % args[0])
 				res.append('\tadd eax, edx')
 
-			elif cmd == 'subt':
+			elif cmd == 'sub':
 				res.append('\tmov edx, [var_%d]' % args[0])
 				res.append('\tsub eax, edx')
+
+			elif cmd == 'mul':
+				res.append('\tmov ebx, eax')
+				res.append('\tmov eax, [var_%d]' % args[0])
+				res.append('\timul ebx')
+
+			elif cmd == 'div':
+				res.append('\tcdq')
+				res.append('\tidiv dword [var_%d]' % args[0])
+
+			elif cmd == 'mod':
+				res.append('\tcdq')
+				res.append('\tidiv dword [var_%d]' % args[0])
+				res.append('\tmov eax, edx')
 
 			elif cmd == 'goto_if':
 				res.append('\tcmp eax, 0')
@@ -248,6 +265,9 @@ class NasmCodeGen(NativeCodeGen):
 				res.append('\tpush fmt_out')
 				res.append('\tcall printf')
 				res.append('\tadd esp, 4*2')
+
+			else:
+				raise CodeGenError, 'unknown instruction: %s' % cmd
 
 		res.append('\tmov esp, ebp')
 		res.append('\tpop ebp')
@@ -282,11 +302,20 @@ class HtmlCodeGen(NativeCodeGen):
 			elif cmd == 'store':
 				res.append('var_%d = acc;' % args[0])
 
-			elif cmd == 'addt':
+			elif cmd == 'add':
 				res.append('acc += var_%d;' % args[0])
 
-			elif cmd == 'subt':
+			elif cmd == 'sub':
 				res.append('acc -= var_%d;' % args[0])
+
+			elif cmd == 'mul':
+				res.append('acc *= var_%d;' % args[0])
+
+			elif cmd == 'div':
+				res.append('acc /= var_%d;' % args[0])
+
+			elif cmd == 'mod':
+				res.append('acc %%= var_%d;' % args[0])
 
 			elif cmd == 'goto_if':
 				res.append('if (acc) { label_%d(); return; }' % args[0])
@@ -305,6 +334,9 @@ class HtmlCodeGen(NativeCodeGen):
 
 			elif cmd == 'output':
 				res.append('document.write(acc); document.write(\'<br />\\n\');');
+
+			else:
+				raise CodeGenError, 'unknown instruction: %s' % cmd
 
 		if label_used: res.append('}')
 
@@ -329,7 +361,7 @@ def main():
 
 	code = code_gen(interm).get_code()
 
-	print code
+	print code.rstrip()
 	print '----'
 
 	if code_gen == NasmCodeGen:

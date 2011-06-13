@@ -1,0 +1,19 @@
+/* vim: set ft=c: */
+
+a = input;
+b = input;
+
+gcd = 1;
+lcm = 1;
+
+running = 1;
+while (running) {
+	c = b%a;
+
+	if (c) {
+		b = a;
+		a = c;
+	} else running = 0;
+}
+
+output = a;
