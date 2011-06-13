@@ -60,11 +60,11 @@ class Compiler:
 						'%ProgramFiles(x86)%\\Microsoft Visual Studio 9.0\\VC\\lib', '%ProgramFiles(x86)%\\Microsoft SDKs\\Windows\\v7.0A\\Lib'
 					]
 
-					if os.system('nasm -fwin32 -l%s -o%s %s' % (lst_fpath, obj_fpath, asm_fpath)): raise CodeGenError, 'failed to execte nasm'
-					if os.system('link /out:%s %s %s libcmt.lib /subsystem:console' % (out_fpath, ' '.join('/libpath:"%s"' % x for x in lib_dirs), obj_fpath)): raise CodeGenError, 'failed to execte gcc'
+					if os.system('nasm -fwin32 -l%s -o%s %s' % (lst_fpath, obj_fpath, asm_fpath)): raise CompileError, 'failed to execte nasm'
+					if os.system('link /out:%s %s %s libcmt.lib /subsystem:console' % (out_fpath, ' '.join('/libpath:"%s"' % x for x in lib_dirs), obj_fpath)): raise CompileError, 'failed to execte gcc'
 				else:
-					if os.system('nasm -felf32 -l%s -o%s %s' % (lst_fpath, obj_fpath, asm_fpath)): raise CodeGenError, 'failed to execte nasm'
-					if os.system('gcc -m32 -o%s %s' % (out_fpath, obj_fpath)): raise CodeGenError, 'failed to execte gcc'
+					if os.system('nasm -felf32 -l%s -o%s %s' % (lst_fpath, obj_fpath, asm_fpath)): raise CompileError, 'failed to execte nasm'
+					if os.system('gcc -m32 -o%s %s' % (out_fpath, obj_fpath)): raise CompileError, 'failed to execte gcc'
 
 			finally:
 				try: os.unlink(obj_fpath)
