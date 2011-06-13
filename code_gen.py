@@ -17,6 +17,9 @@ class IntermCodeGen:
 	label_cnt = 0
 	fds = {}
 
+	def __init__(self, tree=None):
+		self.set_tree(tree)
+
 	def determ_inher_attrs(self, node):
 		# do here
 
@@ -24,10 +27,21 @@ class IntermCodeGen:
 			determ_inher_attr(child)
 
 	def determ_synth_attrs(self, node):
-		for child in node['childs']:
-			determ_synth_attr(child)
+		if not node['childs']: return
 
-		# do here
+		params = {
+			'node': node,
+			'childs': node['childs'],
+
+			'id_place': self.get_id_place,
+			'tmp_place': self.get_tmp_place,
+			'new_label': self.get_new_label,
+		}
+
+		for child in node['childs']:
+			self.determ_synth_attrs(child)
+
+		eval(node['sem_rules'], params)
 
 	def alloc_place(self, size):
 		offset = self.mem_offset
@@ -48,23 +62,6 @@ class IntermCodeGen:
 		self.label_cnt += 1
 		return new_label
 
-	def determ_attrs(self, node):
-		if not node['childs']: return
-
-		params = {
-			'node': node,
-			'childs': node['childs'],
-
-			'id_place': self.get_id_place,
-			'tmp_place': self.get_tmp_place,
-			'new_label': self.get_new_label,
-		}
-
-		for child in node['childs']:
-			self.determ_attrs(child)
-
-		eval(node['sem_rules'], params)
-
 	def set_tree(self, tree):
 		self.mem_offset = 0
 		self.sym2mem = {}
@@ -72,9 +69,11 @@ class IntermCodeGen:
 		self.label_cnt = 0
 		self.fds = {}
 
+		if not tree: return
+
 		self.fds['input'] = self.get_id_place('input') # FIXME: should be number
 		self.fds['output'] = self.get_id_place('output') # FIXME: should be number
-		self.determ_attrs(tree)
+		self.determ_synth_attrs(tree)
 		self.code = tree['code']
 
 		i = 0
@@ -350,8 +349,7 @@ def main():
 	parser.load_rules('rules/rules.txt.barosl')
 	tree = parser.parse_file('input/sum.barosl')
 
-	interm = IntermCodeGen()
-	interm.set_tree(tree)
+	interm = IntermCodeGen(tree)
 
 	for code in interm.code: print code
 	print '----'
@@ -363,42 +361,6 @@ def main():
 
 	print code.rstrip()
 	print '----'
-
-	if code_gen == NasmCodeGen:
-		out_fpath = 'a.out'
-		obj_fpath = 'a.o'
-
-		asm_fpath = 'a.as'
-		lst_fpath = 'a.lst'
-
-		if sys.platform == 'win32': code = re.sub('\\b(main|printf|scanf)\\b', '_\\1', code)
-
-		open(asm_fpath, 'w').write(code)
-
-		try:
-			if sys.platform == 'win32':
-				out_fpath = 'a.exe'
-				obj_fpath = 'a.obj'
-
-				lib_dirs = [
-					'%ProgramFiles%\\Microsoft Visual Studio 9.0\\VC\\lib', '%ProgramFiles%\\Microsoft SDKs\\Windows\\v7.0A\\Lib'
-					'%ProgramFiles(x86)%\\Microsoft Visual Studio 9.0\\VC\\lib', '%ProgramFiles(x86)%\\Microsoft SDKs\\Windows\\v7.0A\\Lib'
-				]
-
-				if os.system('nasm -fwin32 -l%s -o%s %s' % (lst_fpath, obj_fpath, asm_fpath)): raise CodeGenError, 'failed to execte nasm'
-				if os.system('link /out:%s %s %s libcmt.lib /subsystem:console' % (out_fpath, ' '.join('/libpath:"%s"' % x for x in lib_dirs), obj_fpath)): raise CodeGenError, 'failed to execte gcc'
-			else:
-				if os.system('nasm -felf32 -l%s -o%s %s' % (lst_fpath, obj_fpath, asm_fpath)): raise CodeGenError, 'failed to execte nasm'
-				if os.system('gcc -m32 -o%s %s' % (out_fpath, obj_fpath)): raise CodeGenError, 'failed to execte gcc'
-
-		finally:
-			try: os.unlink(obj_fpath)
-			except OSError: pass
-			try: os.unlink(lst_fpath)
-			except OSError: pass
-
-	elif code_gen == HtmlCodeGen:
-		open('output.html', 'w').write(code)
 
 if __name__ == '__main__':
 	main()
