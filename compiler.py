@@ -6,6 +6,7 @@ from lr_parser import Parser, ParseError
 from code_gen import IntermCodeGen, LmcCodeGen, NasmCodeGen, HtmlCodeGen, CodeGenError
 import os
 import argparse
+import re
 
 class CompileError:
 	def __init__(self, msg): self.msg = msg

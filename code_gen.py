@@ -2,9 +2,6 @@
 # -*- coding: utf-8 -*-
 
 from lr_parser import Parser
-import os
-import sys
-import re
 
 class CodeGenError:
 	def __init__(self, msg): self.msg = msg

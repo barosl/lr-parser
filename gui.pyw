@@ -176,7 +176,7 @@ class MainWnd(QWidget):
 		self.resize(800, 600)
 
 		self.compiler = Compiler()
-		try: self.compiler.set_rule_file('rules/rules.txt')
+		try: self.compiler.set_rule_file('rules/rules.txt.barosl')
 		except:
 			e = sys.exc_info()[1]
 			self.compiler = None
