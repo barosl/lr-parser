@@ -500,3 +500,14 @@ class Lexer:
 
 					tok['type'] = '>>'
 					return tok
+
+def main():
+	lexer = Lexer()
+	lexer.parse_text('abc=123; def=456;')
+	while True:
+		tok = lexer.get_next_tok()
+		print tok
+		if tok['type'] == 'eof': break
+
+if __name__ == '__main__':
+	main()
