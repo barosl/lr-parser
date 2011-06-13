@@ -279,7 +279,7 @@ class Parser:
 		if not self.rules:
 			raise ParserError, 'rules not loaded'
 
-		que = [{'type': '$'}]+list(reversed(toks))
+		que = [{'type': '$', 'buf': '$'}]+list(reversed(toks))
 		stack = [self.state_0]
 		tree_stack = []
 		tree = None
@@ -291,7 +291,7 @@ class Parser:
 			state = stack[-1]
 
 			try: info = self.lr_table[state][tok['type']]
-			except KeyError: raise ParserError, 'input not acceptable: %s' % tok['type']
+			except KeyError: raise ParserError, 'input not acceptable: %s (%s)' % (tok['buf'], tok['type'])
 
 			if info[0] == 's':
 				stack.append(tok)
