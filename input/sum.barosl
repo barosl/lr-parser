@@ -5,3 +5,17 @@ while (cnt) {
 	cnt = cnt - 1;
 }
 output = sum;
+
+/*
+a = 0;
+b = 1;
+cnt = 20;
+
+while (cnt) {
+	output = a;
+	c = a+b;
+	a = b;
+	b = c;
+	cnt = cnt - 1;
+}
+*/

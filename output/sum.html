@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html><head><title>LR Parsing Results</title></head><body><script type="text/javascript">
+var_2 = 0;
+acc = var_2;
+var_3 = acc;
+acc = parseInt(prompt('Input a number:'));
+var_4 = acc;
+label_0();
+function label_0() {
+acc = var_4;
+if (acc) { label_1(); return; }
+label_2(); return;
+label_1();
+}
+function label_1() {
+acc = var_3;
+acc += var_4;
+var_5 = acc;
+acc = var_5;
+var_3 = acc;
+var_6 = 1;
+acc = var_4;
+acc -= var_6;
+var_7 = acc;
+acc = var_7;
+var_4 = acc;
+label_0(); return;
+label_2();
+}
+function label_2() {
+acc = var_3;
+document.write(acc); document.write('<br />\n');
+}
+</script></body></html>
