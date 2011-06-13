@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from lr_parser import Parser
+from lr_parser import Parser, ParseError
 import sys
 from PySide.QtCore import *
 from PySide.QtGui import *
+from code_gen import IntermCodeGen, CodeGenError, LmcCodeGen, NasmCodeGen, HtmlCodeGen
+from compiler import Compiler, CompileError
 
 NODE_W = 50
 NODE_H = 50
@@ -109,9 +111,16 @@ class Canvas(QWidget):
 			pa.drawLine(line['po_from'][0], line['po_from'][1], line['po_to'][0], line['po_to'][1])
 
 class MainWnd(QWidget):
-	canvas = None
+	compiler = None
+	interm = None
+	code = None
+	fpath = ''
+
 	area = None
-	parser = None
+	tree_area, tree_canvas = None, None
+	interm_area = None
+	code_area = None
+	target_g = None
 
 	def __init__(self):
 		super(MainWnd, self).__init__()
@@ -126,43 +135,106 @@ class MainWnd(QWidget):
 		open_g.clicked.connect(self.on_open)
 		butts.addWidget(open_g)
 
+		build_g = QPushButton(u'빌드(&B)')
+		build_g.clicked.connect(self.on_build)
+		butts.addWidget(build_g)
+
 		about_g = QPushButton(u'정보(&A)')
 		about_g.clicked.connect(lambda: QMessageBox.information(self, None, u'Copyright (C) 2011 by 랜덤여신 <http://barosl.com/>'))
 		butts.addWidget(about_g)
 
+		self.target_g = QComboBox()
+		self.target_g.addItem(u'리틀 맨 컴퓨터', u'lmc')
+		self.target_g.addItem(u'네이티브', u'native')
+		self.target_g.addItem(u'HTML', u'html')
+		self.target_g.setCurrentIndex(1)
+		self.target_g.currentIndexChanged[int].connect(self.on_target_changed)
+		butts.addWidget(self.target_g)
+
 		lt.addLayout(butts)
 
-		self.canvas = Canvas()
+		self.tree_canvas = Canvas()
 
-		self.area = QScrollArea(self)
-		self.area.setWidget(self.canvas)
+		self.tree_area = QScrollArea()
+		self.tree_area.setWidget(self.tree_canvas)
+
+		self.interm_area = QTextEdit()
+		self.interm_area.setFontPointSize(20)
+		self.interm_area.setReadOnly(True)
+
+		self.code_area = QTextEdit()
+		self.code_area.setFontPointSize(20)
+		self.code_area.setReadOnly(True)
+
+		self.area = QTabWidget()
+		self.area.addTab(self.tree_area, u'트리')
+		self.area.addTab(self.interm_area, u'중간 코드')
+		self.area.addTab(self.code_area, u'최종 코드')
 
 		lt.addWidget(self.area)
 
 		self.resize(800, 600)
 
-		self.parser = Parser()
-		try: self.parser.load_rules('rules/rules.txt')
-		except Exception, e:
-			self.parser = None
+		self.compiler = Compiler()
+		try: self.compiler.set_rule_file('rules/rules.txt')
+		except:
+			e = sys.exc_info()[1]
+			self.compiler = None
 			QMessageBox.critical(self, None, str(e).decode('utf-8', 'replace'))
 
 	def on_open(self):
-		if not self.parser:
+		if not self.compiler:
 			QMessageBox.critical(self, None, u'구문 분석자가 초기화되지 않았습니다.')
 			return
 
-		fpath = QFileDialog.getOpenFileName(self, None, 'input', u'C 파일 (*.c);;텍스트 파일 (*.txt);;모든 파일 (*)')[0]
+		fpath = QFileDialog.getOpenFileName(self, None, 'input', u'바로슬 파일 (*.barosl);;C 파일 (*.c);;텍스트 파일 (*.txt);;모든 파일 (*)')[0]
 		if not fpath: return
 
-		tree = self.parser.parse_file(fpath)
+		try: tree = self.compiler.parser.parse_file(fpath)
+		except ParseError, e:
+			QMessageBox.critical(self, None, u'구분 분석에 실패했습니다: %s' % str(e).decode('utf-8', 'replace'))
+			return
 
-		self.canvas.boxes, self.canvas.lines, w, h = draw_tree(tree)
-		self.canvas.resize(w, h)
+		self.fpath = fpath
 
-		self.area.ensureVisible(w/2, 0, self.area.width()/2)
+		self.tree_canvas.boxes, self.tree_canvas.lines, w, h = draw_tree(tree)
+		self.tree_canvas.resize(w, h)
+		self.tree_area.ensureVisible(w/2, 0, self.tree_area.width()/2)
+		self.tree_canvas.update()
 
-		self.canvas.update()
+		self.interm_area.setPlainText(u'')
+
+		try: self.interm = IntermCodeGen(tree)
+		except CodeGenError, e: self.interm_area.setPlainText(u'중간 코드를 만들 수 없습니다: %s' % str(e).decode('utf-8', 'replace'))
+		else:
+			self.interm_area.setPlainText('\n'.join(' '.join(str(y) for y in x) for x in self.interm.code).decode('utf-8', 'replace'))
+
+		self.on_code()
+
+	def on_code(self):
+		self.code_area.setPlainText(u'')
+
+		target = self.target_g.itemData(self.target_g.currentIndex())
+		self.compiler.set_target(target)
+
+		try:
+			self.code = self.compiler.code_gen(self.interm).get_code()
+			self.code_area.setPlainText(self.code.rstrip().decode('utf-8', 'replace'))
+		except CodeGenError, e:
+			self.code_area.setPlainText(u'최종 코드를 만들 수 없습니다: %s' % str(e).decode('utf-8', 'replace'))
+
+	def on_target_changed(self, idx):
+		self.on_code()
+
+	def on_build(self):
+		try:
+			target = self.target_g.itemData(self.target_g.currentIndex())
+			self.compiler.set_target(target)
+			self.compiler.build(self.fpath)
+		except CompileError, e:
+			QMessageBox.critical(self, None, u'빌드할 수 없습니다: %s' % str(e).decode('utf-8', 'replace'))
+		else:
+			QMessageBox.information(self, None, u'빌드에 성공하였습니다.')
 
 def main():
 	app = QApplication(sys.argv)

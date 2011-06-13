@@ -2,9 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import sys
-from lr_parser import Parser
-from code_gen import IntermCodeGen
-from code_gen import LmcCodeGen, NasmCodeGen, HtmlCodeGen
+from lr_parser import Parser, ParseError
+from code_gen import IntermCodeGen, LmcCodeGen, NasmCodeGen, HtmlCodeGen, CodeGenError
 import os
 import argparse
 
@@ -32,9 +31,12 @@ class Compiler:
 		if not self.parser: raise CompileError, 'parser not initialized'
 		if not self.code_gen: raise CompileError, 'target not selected'
 
-		tree = self.parser.parse_file(fpath)
-		interm = IntermCodeGen(tree)
-		code = self.code_gen(interm).get_code()
+		try: tree = self.parser.parse_file(fpath)
+		except ParseError, e: raise CompileError, 'parse error: %s' % str(e)
+		try:
+			interm = IntermCodeGen(tree)
+			code = self.code_gen(interm).get_code()
+		except CodeGenError, e: raise CompileError, 'code generation error: %s' % str(e)
 
 		base_fpath = fpath[:fpath.rindex('.')]
 

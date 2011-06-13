@@ -4,7 +4,7 @@
 import re
 from lexer import Lexer
 
-class ParserError:
+class ParseError:
 	def __init__(self, msg): self.msg = msg
 	def __str__(self): return self.msg
 
@@ -175,7 +175,7 @@ class Parser:
 			words = re.findall('\\S+', line)
 			if not words: continue
 			if len(words) <= 1 or words[1] != '=>':
-				raise ParserError, '\'=>\' not exists in rule'
+				raise ParseError, '\'=>\' not exists in rule'
 			label, syms = words[0], words[2:]
 
 			if not syms: syms.append('')
@@ -190,7 +190,7 @@ class Parser:
 			rules[label].append(cur_syms)
 
 		if not_yet:
-			raise ParserError, 'empty grammar'
+			raise ParseError, 'empty grammar'
 
 		if pythonic and cur_syms:
 			cur_syms.set_sem_rules(sem_rules)
@@ -228,7 +228,7 @@ class Parser:
 
 					que.append(new_state)
 
-				if sym in state.childs: raise ParserError, 'duplicate entry in GOTO graph'
+				if sym in state.childs: raise ParseError, 'duplicate entry in GOTO graph'
 				state.childs[sym] = new_state
 
 		return states
@@ -245,13 +245,13 @@ class Parser:
 						sym = '$'
 
 						if sym in lr_table[state]:
-							raise ParserError, 'duplicate entry in LR table'
+							raise ParseError, 'duplicate entry in LR table'
 
 						lr_table[state][sym] = ['a']
 					else:
 						for sym in follows[item.st]:
 							if sym in lr_table[state]:
-								raise ParserError, 'duplicate entry in LR table'
+								raise ParseError, 'duplicate entry in LR table'
 
 							lr_table[state][sym] = ['r', item]
 
@@ -264,7 +264,7 @@ class Parser:
 						# Some redundant checks were done here; if the same state and sym are given,
 						# state.childs[sym] must always be the same.
 						if lr_table[state].get(sym, new_val)[0] != new_val[0]:
-							raise ParserError, 'duplicate entry in LR table'
+							raise ParseError, 'duplicate entry in LR table'
 
 						lr_table[state][sym] = new_val
 
@@ -277,7 +277,7 @@ class Parser:
 
 	def parse_toks(self, toks):
 		if not self.rules:
-			raise ParserError, 'rules not loaded'
+			raise ParseError, 'rules not loaded'
 
 		que = [{'type': '$', 'buf': '$'}]+list(reversed(toks))
 		stack = [self.state_0]
@@ -285,13 +285,13 @@ class Parser:
 		tree = None
 
 		while True:
-			if not que: raise ParserError, 'input queue empty'
+			if not que: raise ParseError, 'input queue empty'
 			tok = que[-1]
-			if not stack: raise ParserError, 'stack underflow'
+			if not stack: raise ParseError, 'stack underflow'
 			state = stack[-1]
 
 			try: info = self.lr_table[state][tok['type']]
-			except KeyError: raise ParserError, 'input not acceptable: %s (%s)' % (tok['buf'], tok['type'])
+			except KeyError: raise ParseError, 'input not acceptable: %s (%s)' % (tok['buf'], tok['type'])
 
 			if info[0] == 's':
 				stack.append(tok)
@@ -301,7 +301,7 @@ class Parser:
 
 			elif info[0] == 'r':
 				cnt = len(info[1].syms)*2
-				if len(stack) < cnt: raise ParserError, 'stack underflow'
+				if len(stack) < cnt: raise ParseError, 'stack underflow'
 
 				childs = []
 				if cnt:
@@ -313,17 +313,17 @@ class Parser:
 				stack.append(info[1].st)
 				tree_stack.append({'name': info[1].st, 'childs': childs, 'sem_rules': info[1].syms.sem_rules})
 				info2 = self.lr_table[stack[-2]][stack[-1]]
-				if info2[0] != 'g': raise ParserError, 'invalid LR table entry detected'
+				if info2[0] != 'g': raise ParseError, 'invalid LR table entry detected'
 				stack.append(info2[1])
 
 			elif info[0] == 'a':
 				tree = tree_stack.pop()
 				if len(stack) != 3 or len(que) != 1 or len(tree_stack) != 0:
-					raise ParserError, 'invalid parser state'
+					raise ParseError, 'invalid parser state'
 				break
 
 			else:
-				raise ParserError, 'invalid LR table entry detected'
+				raise ParseError, 'invalid LR table entry detected'
 
 		return tree
 
@@ -345,7 +345,8 @@ class Parser:
 
 	def parse_file(self, fpath):
 		lexer = Lexer()
-		lexer.parse_file(fpath)
+		try: lexer.parse_file(fpath)
+		except IOError: raise ParseError, 'file not accessible'
 		return self.parse_with_lexer(lexer)
 
 def main():

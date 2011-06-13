@@ -73,7 +73,8 @@ class IntermCodeGen:
 
 		self.fds['input'] = self.get_id_place('input') # FIXME: should be number
 		self.fds['output'] = self.get_id_place('output') # FIXME: should be number
-		self.determ_synth_attrs(tree)
+		try: self.determ_synth_attrs(tree)
+		except TypeError: raise CodeGenError, 'semantic rules are not defined'
 		self.code = tree['code']
 
 		i = 0
@@ -107,6 +108,7 @@ class IntermCodeGen:
 
 class NativeCodeGen:
 	def __init__(self, interm):
+		if not interm: raise CodeGenError, 'intermediate code generator is not speicifed'
 		self.interm = interm
 
 class LmcCodeGen(NativeCodeGen):
