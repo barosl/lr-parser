@@ -2,13 +2,16 @@
 # -*- coding: utf-8 -*-
 
 from lr_parser import Parser
+import os
 
-INITIAL_MEM_OFFSET = 99
+class CodeGenError:
+	def __init__(self, msg): self.msg = msg
+	def __str__(self): return self.msg
 
-class IntermCodeGenerator:
-	mem_offset = INITIAL_MEM_OFFSET
+class IntermCodeGen:
+	mem_offset = 0
 	sym2mem = {}
-	interm_code = None
+	code = None
 	label_cnt = 0
 	fds = {}
 
@@ -26,7 +29,7 @@ class IntermCodeGenerator:
 
 	def alloc_place(self, size):
 		offset = self.mem_offset
-		self.mem_offset -= size
+		self.mem_offset += size
 		return offset
 
 	def get_id_place(self, sym_idx, err=None):
@@ -61,61 +64,83 @@ class IntermCodeGenerator:
 		eval(node['sem_rules'], params)
 
 	def set_tree(self, tree):
-		self.mem_offset = INITIAL_MEM_OFFSET
+		self.mem_offset = 0
 		self.sym2mem = {}
-		self.interm_code = None
+		self.code = None
 		self.label_cnt = 0
 		self.fds = {}
 
 		self.fds['input'] = self.get_id_place('input') # FIXME: should be number
 		self.fds['output'] = self.get_id_place('output') # FIXME: should be number
 		self.determ_attrs(tree)
-		self.interm_code = tree['code']
+		self.code = tree['code']
 
-	def get_inst(self, cmd, addr, place):
-		if cmd == 'load':
-			if place == self.fds['input']: return '%02d IN;' % addr
-			else: return '%02d LDA %02d;' % (addr, place)
-		else:
-			if place == self.fds['output']: return '%02d OUT;' % addr
-			else: return '%02d STA %02d;' % (addr, place)
+		i = 0
+		while i < len(self.code):
+			code = self.code[i]
+			cmd, args = code[0], code[1:]
 
-	def get_lmc_code(self):
+			res = []
+
+			if cmd == 'assign':
+				if args[0] == self.fds['output']:
+					place = self.get_tmp_place()
+					res = [['assign', place, args[1]], ['load', place], ['output']]
+
+			elif cmd == 'copy':
+				res = [
+					['input'] if args[1] == self.fds['input'] else ['load', args[1]],
+					['output'] if args[0] == self.fds['output'] else ['store', args[0]],
+				]
+
+			elif cmd == 'load':
+				if args[0] == self.fds['input']: res = [['input']]
+
+			elif cmd == 'store':
+				if args[0] == self.fds['output']: res = [['output']]
+
+			if res:
+				self.code[i:i+1] = res
+				i += len(res)
+			else: i += 1
+
+class NativeCodeGen:
+	def __init__(self, interm):
+		self.interm = interm
+
+class LmcCodeGen(NativeCodeGen):
+	MEM_OFFSET = 99
+
+	def get_code(self):
 		res = []
 
 		labels = {}
 		jmps = []
 
 		addr = 0
-		for row in self.interm_code:
-			cmd, args = row[0], row[1:]
+		for code in self.interm.code:
+			cmd, args = code[0], code[1:]
 
 			if cmd == 'assign':
 				res.append('%02d LDA #%02d;' % (addr, args[1]))
 				addr += 1
-				res.append(self.get_inst('store', addr, args[0]))
-				addr += 1
-
-			elif cmd == 'copy':
-				res.append(self.get_inst('load', addr, args[1]))
-				addr += 1
-				res.append(self.get_inst('store', addr, args[0]))
+				res.append('%02d STA %02d;' % (addr, self.MEM_OFFSET - args[0]))
 				addr += 1
 
 			elif cmd == 'load':
-				res.append(self.get_inst('load', addr, args[0]))
+				res.append('%02d LDA %02d;' % (addr, self.MEM_OFFSET - args[0]))
 				addr += 1
 
 			elif cmd == 'store':
-				res.append(self.get_inst('store', addr, args[0]))
+				res.append('%02d STA %02d;' % (addr, self.MEM_OFFSET - args[0]))
 				addr += 1
 
 			elif cmd == 'addt':
-				res.append('%02d ADD %02d;' % (addr, args[0]))
+				res.append('%02d ADD %02d;' % (addr, self.MEM_OFFSET - args[0]))
 				addr += 1
 
 			elif cmd == 'subt':
-				res.append('%02d SUB %02d;' % (addr, args[0]))
+				res.append('%02d SUB %02d;' % (addr, self.MEM_OFFSET - args[0]))
 				addr += 1
 
 			elif cmd == 'goto_if':
@@ -142,12 +167,148 @@ class IntermCodeGenerator:
 				addr += 1
 
 		for idx in jmps:
-			row = res[idx]
-			res[idx] = '%02d JMP %02d;' % (row[0], labels[row[1]])
+			code = res[idx]
+			res[idx] = '%02d JMP %02d;' % (code[0], labels[code[1]])
 
 		res.append('%02d HLT;' % addr)
 		addr += 1
 
+		res.append('')
+		return '\n'.join(res)
+
+class NasmCodeGen(NativeCodeGen):
+	def get_code(self):
+		res = []
+
+		res.append('\textern printf, scanf')
+
+		res.append('')
+		res.append('\tsection .data')
+		res.append('fmt_out: db \'%d\', 10, 0')
+		res.append('fmt_in: db \'%d\', 0')
+		for place in xrange(self.interm.mem_offset):
+			res.append('var_%d: dd 0' % place)
+		res.append('buf_int: dd 0')
+
+		res.append('')
+		res.append('\tsection .text')
+		res.append('')
+
+		res.append('\tglobal main')
+		res.append('main:')
+
+		res.append('\tpush ebp')
+		res.append('\tmov ebp, esp')
+
+		for code in self.interm.code:
+			cmd, args = code[0], code[1:]
+
+			if cmd == 'assign':
+				res.append('\tmov dword [var_%d], %d' % (args[0], args[1]))
+
+			elif cmd == 'copy':
+				res.append('\tmov dword edx, [var_%d]' % args[1])
+				res.append('\tmov dword [var_%d], edx' % args[0])
+
+			elif cmd == 'load':
+				res.append('\tmov dword eax, [var_%d]' % args[0])
+
+			elif cmd == 'store':
+				res.append('\tmov dword [var_%d], eax' % args[0])
+
+			elif cmd == 'addt':
+				res.append('\tmov edx, [var_%d]' % args[0])
+				res.append('\tadd eax, edx')
+
+			elif cmd == 'subt':
+				res.append('\tmov edx, [var_%d]' % args[0])
+				res.append('\tsub eax, edx')
+
+			elif cmd == 'goto_if':
+				res.append('\tcmp eax, 0')
+				res.append('\tjnz label_%s' % args[0])
+
+			elif cmd == 'goto':
+				res.append('\tjmp label_%s' % args[0])
+
+			elif cmd == 'label':
+				res.append('label_%d:' % args[0])
+
+			elif cmd == 'input':
+				res.append('\tpush buf_int')
+				res.append('\tpush fmt_in')
+				res.append('\tcall scanf')
+				res.append('\tadd esp, 4*2')
+				res.append('\tmov eax, [buf_int]')
+
+			elif cmd == 'output':
+				res.append('\tpush eax')
+				res.append('\tpush fmt_out')
+				res.append('\tcall printf')
+				res.append('\tadd esp, 4*2')
+
+		res.append('\tmov esp, ebp')
+		res.append('\tpop ebp')
+
+		res.append('\tmov eax, 0')
+		res.append('\tret')
+
+		res.append('')
+		return '\n'.join(res)
+
+class HtmlCodeGen(NativeCodeGen):
+	def get_code(self):
+		res = []
+
+		res.append('<!DOCTYPE html>')
+		res.append('<html><head><title>LR Parsing Results</title></head><body><script type="text/javascript">')
+
+		label_used = False
+
+		for code in self.interm.code:
+			cmd, args = code[0], code[1:]
+
+			if cmd == 'assign':
+				res.append('var_%d = %d;' % (args[0], args[1]))
+
+			elif cmd == 'copy':
+				res.append('var_%d = var_%d;' % (args[0], args[1]))
+
+			elif cmd == 'load':
+				res.append('acc = var_%d;' % args[0])
+
+			elif cmd == 'store':
+				res.append('var_%d = acc;' % args[0])
+
+			elif cmd == 'addt':
+				res.append('acc += var_%d;' % args[0])
+
+			elif cmd == 'subt':
+				res.append('acc -= var_%d;' % args[0])
+
+			elif cmd == 'goto_if':
+				res.append('if (acc) { label_%d(); return; }' % args[0])
+
+			elif cmd == 'goto':
+				res.append('label_%d(); return;' % args[0])
+
+			elif cmd == 'label':
+				res.append('label_%d();' % args[0]);
+				if label_used: res.append('}')
+				else: label_used = True
+				res.append('function label_%d() {' % args[0])
+
+			elif cmd == 'input':
+				res.append('acc = parseInt(prompt(\'Input a number:\'));');
+
+			elif cmd == 'output':
+				res.append('document.write(acc); document.write(\'<br />\\n\');');
+
+		if label_used: res.append('}')
+
+		res.append('</script></body></html>')
+
+		res.append('')
 		return '\n'.join(res)
 
 def main():
@@ -155,17 +316,33 @@ def main():
 	parser.load_rules('rules/rules.txt.barosl')
 	tree = parser.parse_file('input/sum.barosl')
 
-	interm = IntermCodeGenerator()
+	interm = IntermCodeGen()
 	interm.set_tree(tree)
 
-	for code in interm.interm_code:
-		print code
+	for code in interm.code: print code
 	print '----'
 
-	code = interm.get_lmc_code()
+	code_gens = [LmcCodeGen, NasmCodeGen, HtmlCodeGen]
+	code_gen = code_gens[0]
+
+	code = code_gen(interm).get_code()
 
 	print code
 	print '----'
+
+	if code_gen == NasmCodeGen:
+		out_fpath = 'a.out'
+		asm_fpath = 'a.as'
+		lst_fpath = 'a.lst'
+		obj_fpath = 'a.o'
+
+		open(asm_fpath, 'w').write(code)
+		if os.system('nasm -felf -l%s %s' % (lst_fpath, asm_fpath)): raise CodeGenError, 'failed to execte nasm'
+		if os.system('gcc -m32 -o%s %s' % (out_fpath, obj_fpath)): raise CodeGenError, 'failed to execte gcc'
+		os.unlink(obj_fpath); os.unlink(lst_fpath)
+
+	elif code_gen == HtmlCodeGen:
+		open('output.html', 'w').write(code)
 
 if __name__ == '__main__':
 	main()
