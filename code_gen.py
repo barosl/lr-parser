@@ -3,6 +3,8 @@
 
 from lr_parser import Parser
 import os
+import sys
+import re
 
 class CodeGenError:
 	def __init__(self, msg): self.msg = msg
@@ -323,7 +325,7 @@ def main():
 	print '----'
 
 	code_gens = [LmcCodeGen, NasmCodeGen, HtmlCodeGen]
-	code_gen = code_gens[0]
+	code_gen = code_gens[1]
 
 	code = code_gen(interm).get_code()
 
@@ -332,14 +334,36 @@ def main():
 
 	if code_gen == NasmCodeGen:
 		out_fpath = 'a.out'
-		asm_fpath = 'a.as'
-		lst_fpath = 'a.lst'
 		obj_fpath = 'a.o'
 
+		asm_fpath = 'a.as'
+		lst_fpath = 'a.lst'
+
+		if sys.platform == 'win32': code = re.sub('\\b(main|printf|scanf)\\b', '_\\1', code)
+
 		open(asm_fpath, 'w').write(code)
-		if os.system('nasm -felf -l%s %s' % (lst_fpath, asm_fpath)): raise CodeGenError, 'failed to execte nasm'
-		if os.system('gcc -m32 -o%s %s' % (out_fpath, obj_fpath)): raise CodeGenError, 'failed to execte gcc'
-		os.unlink(obj_fpath); os.unlink(lst_fpath)
+
+		try:
+			if sys.platform == 'win32':
+				out_fpath = 'a.exe'
+				obj_fpath = 'a.obj'
+
+				lib_dirs = [
+					'%ProgramFiles%\\Microsoft Visual Studio 9.0\\VC\\lib', '%ProgramFiles%\\Microsoft SDKs\\Windows\\v7.0A\\Lib'
+					'%ProgramFiles(x86)%\\Microsoft Visual Studio 9.0\\VC\\lib', '%ProgramFiles(x86)%\\Microsoft SDKs\\Windows\\v7.0A\\Lib'
+				]
+
+				if os.system('nasm -fwin32 -l%s -o%s %s' % (lst_fpath, obj_fpath, asm_fpath)): raise CodeGenError, 'failed to execte nasm'
+				if os.system('link /out:%s %s %s libcmt.lib /subsystem:console' % (out_fpath, ' '.join('/libpath:"%s"' % x for x in lib_dirs), obj_fpath)): raise CodeGenError, 'failed to execte gcc'
+			else:
+				if os.system('nasm -felf32 -l%s -o%s %s' % (lst_fpath, obj_fpath, asm_fpath)): raise CodeGenError, 'failed to execte nasm'
+				if os.system('gcc -m32 -o%s %s' % (out_fpath, obj_fpath)): raise CodeGenError, 'failed to execte gcc'
+
+		finally:
+			try: os.unlink(obj_fpath)
+			except OSError: pass
+			try: os.unlink(lst_fpath)
+			except OSError: pass
 
 	elif code_gen == HtmlCodeGen:
 		open('output.html', 'w').write(code)
