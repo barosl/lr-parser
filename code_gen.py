@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from lr_parser import Parser
+from parser2 import Parser
 
 class CodeGenError:
 	def __init__(self, msg): self.msg = msg
