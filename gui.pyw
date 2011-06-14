@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from lr_parser import Parser, ParseError
+from parser2 import Parser, ParseError
 import sys
 from PySide.QtCore import *
 from PySide.QtGui import *
 from code_gen import IntermCodeGen, CodeGenError, LmcCodeGen, NasmCodeGen, HtmlCodeGen
-from compiler import Compiler, CompileError
+from compiler2 import Compiler, CompileError
 
 NODE_W = 50
 NODE_H = 50

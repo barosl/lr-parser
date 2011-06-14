@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import sys
-from lr_parser import Parser, ParseError
+from parser2 import Parser, ParseError
 from code_gen import IntermCodeGen, LmcCodeGen, NasmCodeGen, HtmlCodeGen, CodeGenError
 import os
 import argparse
