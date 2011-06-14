@@ -117,9 +117,9 @@ class MainWnd(QWidget):
 	fpath = ''
 
 	area = None
-	tree_area, tree_canvas = None, None
-	interm_area = None
-	code_area = None
+	tree_area, tree_g = None, None
+	interm_g = None
+	code_g = None
 	target_g = None
 
 	def __init__(self):
@@ -153,23 +153,24 @@ class MainWnd(QWidget):
 
 		lt.addLayout(butts)
 
-		self.tree_canvas = Canvas()
+		self.tree_g = Canvas()
 
 		self.tree_area = QScrollArea()
-		self.tree_area.setWidget(self.tree_canvas)
+		self.tree_area.setWidget(self.tree_g)
 
-		self.interm_area = QTextEdit()
-		self.interm_area.setFontPointSize(20)
-		self.interm_area.setReadOnly(True)
+		self.text_g = QTextEdit()
+		self.interm_g = QTextEdit()
+		self.code_g = QTextEdit()
 
-		self.code_area = QTextEdit()
-		self.code_area.setFontPointSize(20)
-		self.code_area.setReadOnly(True)
+		for obj in [self.text_g, self.interm_g, self.code_g]:
+			obj.setFontPointSize(20)
+			obj.setReadOnly(True)
 
 		self.area = QTabWidget()
 		self.area.addTab(self.tree_area, u'트리')
-		self.area.addTab(self.interm_area, u'중간 코드')
-		self.area.addTab(self.code_area, u'최종 코드')
+		self.area.addTab(self.text_g, u'원래 코드')
+		self.area.addTab(self.interm_g, u'중간 코드')
+		self.area.addTab(self.code_g, u'최종 코드')
 
 		lt.addWidget(self.area)
 
@@ -197,31 +198,33 @@ class MainWnd(QWidget):
 
 		self.fpath = fpath
 
-		self.tree_canvas.boxes, self.tree_canvas.lines, w, h = draw_tree(tree)
-		self.tree_canvas.resize(w, h)
-		self.tree_area.ensureVisible(w/2, 0, self.tree_area.width()/2)
-		self.tree_canvas.update()
+		self.text_g.setPlainText(open(self.fpath).read().decode('utf-8', 'replace'))
 
-		self.interm_area.setPlainText(u'')
+		self.tree_g.boxes, self.tree_g.lines, w, h = draw_tree(tree)
+		self.tree_g.resize(w, h)
+		self.tree_area.ensureVisible(w/2, 0, self.tree_area.width()/2)
+		self.tree_g.update()
+
+		self.interm_g.setPlainText(u'')
 
 		try: self.interm = IntermCodeGen(tree)
-		except CodeGenError, e: self.interm_area.setPlainText(u'중간 코드를 만들 수 없습니다: %s' % str(e).decode('utf-8', 'replace'))
+		except CodeGenError, e: self.interm_g.setPlainText(u'중간 코드를 만들 수 없습니다: %s' % str(e).decode('utf-8', 'replace'))
 		else:
-			self.interm_area.setPlainText('\n'.join(' '.join(str(y) for y in x) for x in self.interm.code).decode('utf-8', 'replace'))
+			self.interm_g.setPlainText('\n'.join(' '.join(str(y) for y in x) for x in self.interm.code).decode('utf-8', 'replace'))
 
 		self.on_code()
 
 	def on_code(self):
-		self.code_area.setPlainText(u'')
+		self.code_g.setPlainText(u'')
 
 		target = self.target_g.itemData(self.target_g.currentIndex())
 		self.compiler.set_target(target)
 
 		try:
 			self.code = self.compiler.code_gen(self.interm).get_code()
-			self.code_area.setPlainText(self.code.rstrip().decode('utf-8', 'replace'))
+			self.code_g.setPlainText(self.code.rstrip().decode('utf-8', 'replace'))
 		except CodeGenError, e:
-			self.code_area.setPlainText(u'최종 코드를 만들 수 없습니다: %s' % str(e).decode('utf-8', 'replace'))
+			self.code_g.setPlainText(u'최종 코드를 만들 수 없습니다: %s' % str(e).decode('utf-8', 'replace'))
 
 	def on_target_changed(self, idx):
 		self.on_code()
