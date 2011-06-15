@@ -81,8 +81,8 @@ class Compiler:
 
 def main():
 	arg_parser = argparse.ArgumentParser(description='Compile some files.')
-	arg_parser.add_argument('files', metavar='File', type=str, nargs='+', help='source files to build')
-	arg_parser.add_argument('-t', dest='target', help='determine target system that is used to build')
+	arg_parser.add_argument('files', metavar='FILE', type=str, nargs='+', help='source files to build')
+	arg_parser.add_argument('-t', '--target', dest='target', help='determine which target system should be used')
 	args = arg_parser.parse_args()
 
 	compiler = Compiler()
