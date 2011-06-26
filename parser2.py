@@ -63,6 +63,9 @@ class Parser:
 	lr_table = {}
 	state_0 = None
 
+	def __init__(self, fpath=None):
+		if fpath: self.load_rules(fpath)
+
 	def get_firsts(self, syms):
 		res = self.firsts_cache.get(tuple(syms), [])
 		if res: return res
@@ -350,8 +353,7 @@ class Parser:
 		return self.parse_with_lexer(lexer)
 
 def main():
-	parser = Parser()
-	parser.load_rules('rules/rules.txt.prof')
+	parser = Parser('rules/rules.txt.prof')
 	tree = parser.parse_toks([{'type': x} for x in ['id', '=', 'num', ';', 'id', '=', 'num', ';']])
 	print tree
 	tree = parser.parse_text('a=123; b=456;')
