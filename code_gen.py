@@ -241,12 +241,24 @@ class NasmCodeGen(NativeCodeGen):
 				res.append('\tidiv dword [var_%d]' % args[0])
 				res.append('\tmov eax, edx')
 
+			elif cmd == 'goto':
+				res.append('\tjmp label_%s' % args[0])
+
 			elif cmd == 'goto_if':
 				res.append('\tcmp eax, 0')
 				res.append('\tjnz label_%s' % args[0])
 
-			elif cmd == 'goto':
-				res.append('\tjmp label_%s' % args[0])
+			elif cmd == 'goto_if_not':
+				res.append('\tcmp eax, 0')
+				res.append('\tjz label_%s' % args[0])
+
+			elif cmd == 'goto_if_pos':
+				res.append('\tcmp eax, 0')
+				res.append('\tjg label_%s' % args[0])
+
+			elif cmd == 'goto_if_neg':
+				res.append('\tcmp eax, 0')
+				res.append('\tjl label_%s' % args[0])
 
 			elif cmd == 'label':
 				res.append('label_%d:' % args[0])
