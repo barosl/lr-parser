@@ -24,7 +24,7 @@ class IntermCodeGen:
 			determ_inher_attr(child)
 
 	def determ_synth_attrs(self, node):
-		if not node['childs']: return
+		if 'type' in node: return
 
 		params = {
 			'node': node,
