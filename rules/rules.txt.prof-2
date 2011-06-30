@@ -1,0 +1,139 @@
+# vim: set ft=python:
+
+# P => L
+node['code'] = childs[0]['code']
+
+# L =>
+node['code'] = []
+
+# L => L S
+node['code'] = childs[0]['code'] + childs[1]['code']
+
+# S => if ( BE ) S
+label_true = new_label()
+label_next = new_label()
+
+node['code'] = childs[2]['code'] + [['load', childs[2]['place']], ['goto_if', label_true]] + [['goto', label_next]] \
+	+ [['label', label_true]] + childs[4]['code'] \
+	+ [['label', label_next]]
+
+# S => while ( BE ) S
+label_begin = new_label()
+label_next = new_label()
+
+node['code'] = [['label', label_begin]] + childs[2]['code'] + [['load', childs[2]['place']], ['goto_if_not', label_next]] \
+	+ childs[4]['code'] + [['goto', label_begin]] \
+	+ [['label', label_next]]
+
+# S => id = AE ;
+place = id_place(childs[0]['str'])
+node['code'] = childs[2]['code'] + [['copy', place, childs[2]['place']]]
+
+# S => { L }
+node['code'] = childs[1]['code']
+
+# AE => AT
+node['place'] = childs[0]['place']
+node['code'] = childs[0]['code']
+
+# AE => AE + AT
+node['place'] = tmp_place()
+node['code'] = childs[0]['code'] + childs[2]['code'] + [['load', childs[0]['place']], ['add', childs[2]['place']], ['store', node['place']]]
+
+# AE => AE - AT
+node['place'] = tmp_place()
+node['code'] = childs[0]['code'] + childs[2]['code'] + [['load', childs[0]['place']], ['sub', childs[2]['place']], ['store', node['place']]]
+
+# AT => AF
+node['place'] = childs[0]['place']
+node['code'] = childs[0]['code']
+
+# AT => AT * AF
+node['place'] = tmp_place()
+node['code'] = childs[0]['code'] + childs[2]['code'] + [['load', childs[0]['place']], ['mul', childs[2]['place']], ['store', node['place']]]
+
+# AT => AT / AF
+node['place'] = tmp_place()
+node['code'] = childs[0]['code'] + childs[2]['code'] + [['load', childs[0]['place']], ['div', childs[2]['place']], ['store', node['place']]]
+
+# AF => ( AE )
+node['place'] = childs[1]['place']
+node['code'] = childs[1]['code']
+
+# AF => id
+node['place'] = id_place(childs[0]['str'])
+node['code'] = []
+
+# AF => num
+node['place'] = tmp_place()
+node['code'] = [['assign', node['place'], childs[0]['str']]]
+
+# BE => BT
+node['place'] = childs[0]['place']
+node['code'] = childs[0]['code']
+
+# BE => BE || BT
+label_true = new_label()
+label_next = new_label()
+
+node['place'] = tmp_place()
+node['code'] = [['load', childs[0]['place']], ['add', childs[2]['place']], ['goto_if', label_true]] \
+	+ [['assign', node['place'], 0]] \
+	+ [['goto', label_next]] \
+	+ [['label', label_true]] \
+	+ [['assign', node['place'], 1]] \
+	+ [['label', label_next]]
+
+# BT => BF
+node['place'] = childs[0]['place']
+node['code'] = childs[0]['code']
+
+# BT => BT && BF
+label_true = new_label()
+label_next = new_label()
+
+node['place'] = tmp_place()
+node['code'] = [['load', childs[0]['place']], ['mul', childs[2]['place']], ['goto_if', label_true]] \
+	+ [['assign', node['place'], 0]] \
+	+ [['goto', label_next]] \
+	+ [['label', label_true]] \
+	+ [['assign', node['place'], 1]] \
+	+ [['label', label_next]]
+
+# BF => ( BE )
+node['place'] = childs[1]['place']
+node['code'] = childs[1]['code']
+
+# BF => ! BF
+label_true = new_label()
+label_next = new_label()
+
+node['place'] = tmp_place()
+node['code'] = [['load', childs[1]['place']], ['goto_if', label_true]] \
+	+ [['assign', node['place'], 1]] \
+	+ [['goto', label_next]] \
+	+ [['label', label_true]] \
+	+ [['assign', node['place'], 0]] \
+	+ [['label', label_next]]
+
+# BF => AE rop AE
+rops = {
+	'==': ['goto_if_not'],
+	'!=': ['goto_if'],
+	'>': ['goto_if_pos'],
+	'>=': ['goto_if_pos', 'goto_if_not'],
+	'<': ['goto_if_neg'],
+	'<=': ['goto_if_neg', 'goto_if_not'],
+}
+
+label_true = new_label()
+label_next = new_label()
+
+node['place'] = tmp_place()
+node['code'] = childs[0]['code'] + childs[2]['code'] + [['load', childs[0]['place']], ['sub', childs[2]['place']]] \
+		+ [[x, label_true] for x in rops[childs[1]['str']]] \
+		+ [['assign', node['place'], 0]] \
+		+ [['goto', label_next]] \
+		+ [['label', label_true]] \
+		+ [['assign', node['place'], 1]] \
+		+ [['label', label_next]]
