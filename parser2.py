@@ -275,7 +275,8 @@ class Parser:
 		self.state_0 = states[0]
 
 	def load_rules(self, fpath):
-		self.read_rules(fpath)
+		try: self.read_rules(fpath)
+		except IOError: raise ParseError, 'unable to read grammar file'
 		self.create_table()
 
 	def parse_toks(self, toks):

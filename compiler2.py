@@ -83,10 +83,11 @@ def main():
 	arg_parser = argparse.ArgumentParser(description='Compile some files.')
 	arg_parser.add_argument('files', metavar='File', type=str, nargs='+', help='source files to build')
 	arg_parser.add_argument('-t', dest='target', help='determine target system that is used to build')
+	arg_parser.add_argument('-g', dest='grammar', default=os.path.dirname(__file__)+'/rules/rules.txt.barosl', help='choose grammar file for parsing')
 	args = arg_parser.parse_args()
 
 	compiler = Compiler()
-	compiler.set_rule_file(os.path.dirname(__file__)+'/rules/rules.txt.barosl')
+	compiler.set_rule_file(args.grammar)
 
 	if args.target:
 		try: compiler.set_target(args.target)
